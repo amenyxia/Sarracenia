@@ -131,7 +131,7 @@ Configuration is managed via `config.json`.
 | `server_addr`           | Tarpit server listener address.                       | `:7277`                                                            |
 | `api_addr`              | API/Dashboard server listener address.                | `:7278`                                                            |
 | `log_level`             | Logging verbosity (`debug`, `info`, `warn`, `error`). | `info`                                                             |
-| `trusted_proxies`       | List of CIDRs or IPs to trust for X-Forwarded-For.    | `[]`                                                               |
+| `trusted_proxies`       | List of CIDRs or IPs to trust for `CF-Connecting-IP`, `X-Real-IP`, and `X-Forwarded-For` headers. | `[]`                                                               |
 | `data_dir`              | Base directory for data files.                        | `./data`                                                           |
 | `markov_database_path`  | Path to the Markov chain database.                    | `./data/sarracenia_markov.db?_journal_mode=WAL&_busy_timeout=5000` |
 | `auth_database_path`    | Path to the Auth/Whitelist database.                  | `./data/sarracenia_auth.db?_journal_mode=WAL&_busy_timeout=5000`   |
