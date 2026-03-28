@@ -90,6 +90,22 @@ go build -o sarracenia ./cmd/main
 
 ---
 
+## Testing
+
+```sh
+# Run all tests
+go test ./...
+
+# Run a specific package
+go test ./pkg/markov/
+go test ./cmd/main/
+
+# Run a single test by name
+go test ./cmd/main/ -run TestGetClientIP
+```
+
+---
+
 ## Initial Setup
 
 1. **Access the Dashboard**:
