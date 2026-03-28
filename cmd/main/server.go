@@ -150,7 +150,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleTarpit(w http.ResponseWriter, r *http.Request) {
 	ipAddr := s.getClientIP(r)
 	if s.wlc.IsWhitelisted(ipAddr, r.UserAgent()) {
-		s.logger.Debug("Request from whitelisted client, serving 404.", "remote_addr", r.RemoteAddr, "user_agent", r.UserAgent())
+		s.logger.Debug("Request from whitelisted client, serving 404.", "remote_addr", ipAddr, "user_agent", r.UserAgent())
 		http.NotFound(w, r)
 		return
 	}
@@ -230,7 +230,7 @@ func (s *Server) handleTarpit(w http.ResponseWriter, r *http.Request) {
 
 		// Write the chunk to the client.
 		if _, err = w.Write(responseBytes[i:end]); err != nil {
-			s.logger.Error("Failed to write tarpit chunk to client", "error", err, "remote_addr", r.RemoteAddr)
+			s.logger.Error("Failed to write tarpit chunk to client", "error", err, "remote_addr", ipAddr)
 			return // Stop if the client closes the connection.
 		}
 
@@ -273,6 +273,11 @@ func (s *Server) getClientIP(r *http.Request) string {
 	// Cloudflare Header
 	if cfIP := r.Header.Get("CF-Connecting-IP"); cfIP != "" {
 		return cfIP
+	}
+
+	// X-Real-IP
+	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		return realIP
 	}
 
 	// X-Forwarded-For
