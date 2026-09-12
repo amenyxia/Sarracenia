@@ -16,12 +16,12 @@
 
 A high-performance, configurable anti-scraper tarpit server written in Go.
 
-Sarracenia is meant to serve as a defensive countermeasure against web scrapers by serving generated, endless, and 
-good-enough web content to be believable. It's primary goal is to trap scrapers and keep them away from your actual 
+Sarracenia is meant to serve as a defensive countermeasure against web scrapers by serving generated, endless, and
+good-enough web content to be believable. It's primary goal is to trap scrapers and keep them away from your actual
 web content, or as a more strict enforcer for those who don't listen to robots.txt.
 
-Sarracenia is made to use a very low amount of resources while remaining performant, and uses SQLite databases to hold 
-data when it's not being used. This allows Sarracenia to have functionality like multiple markov models, each trained 
+Sarracenia is made to use a very low amount of resources while remaining performant, and uses SQLite databases to hold
+data when it's not being used. This allows Sarracenia to have functionality like multiple markov models, each trained
 on hundreds of MB of text data or even larger, while keeping its memory footprint in the double digits at most.
 
 Please note that Sarracenia is currently feature complete, as I have added everything that I wanted to.
@@ -110,13 +110,16 @@ go test ./cmd/main/ -run TestGetClientIP
 
 1. **Access the Dashboard**:
    By default, the dashboard runs on port `:7278`. Open a browser and navigate to `http://localhost:7278`.
+    * Note: The port for the dashboard does not implement rate-limiting. If you are not behind a service to circumvent
+      that such as Cloudflare, do not expose the API to the internet.
 
-2. **Create Master API Key**:
-   Upon first launch, the API is unsecured to allow initialization.
-    * Navigate to the **API Keys** page.
-    * Create a new key. The first key created is automatically assigned the Master (`*`) scope.
-    * **Copy this key immediately.** It will not be shown again.
-    * Once created, the API and Dashboard are immediately secured, and you will be logged in automatically.
+2. **Get the Master API Key**:
+   On first launch, the server creates the master key automatically at startup. It gets the master key from one of two
+   sources.
+    * If the `sarr-master-key` environment variable is set, that value becomes the master key.
+    * Otherwise, a key is generated and logged at warn level:
+      `level=WARN msg="No API keys existed, generated master API key:" key=sarr_...`
+    * You can then use this key to access the dashboard.
 
 ---
 
@@ -126,34 +129,34 @@ Configuration is managed via `config.json`.
 
 ### Server Configuration (`server_config`)
 
-| Key                     | Description                                           | Default                                                            |
-|:------------------------|:------------------------------------------------------|:-------------------------------------------------------------------|
-| `server_addr`           | Tarpit server listener address.                       | `:7277`                                                            |
-| `api_addr`              | API/Dashboard server listener address.                | `:7278`                                                            |
-| `log_level`             | Logging verbosity (`debug`, `info`, `warn`, `error`). | `info`                                                             |
+| Key                     | Description                                                                                       | Default                                                            |
+|:------------------------|:--------------------------------------------------------------------------------------------------|:-------------------------------------------------------------------|
+| `server_addr`           | Tarpit server listener address.                                                                   | `:7277`                                                            |
+| `api_addr`              | API/Dashboard server listener address.                                                            | `:7278`                                                            |
+| `log_level`             | Logging verbosity (`debug`, `info`, `warn`, `error`).                                             | `info`                                                             |
 | `trusted_proxies`       | List of CIDRs or IPs to trust for `CF-Connecting-IP`, `X-Real-IP`, and `X-Forwarded-For` headers. | `[]`                                                               |
-| `data_dir`              | Base directory for data files.                        | `./data`                                                           |
-| `markov_database_path`  | Path to the Markov chain database.                    | `./data/sarracenia_markov.db?_journal_mode=WAL&_busy_timeout=5000` |
-| `auth_database_path`    | Path to the Auth/Whitelist database.                  | `./data/sarracenia_auth.db?_journal_mode=WAL&_busy_timeout=5000`   |
-| `stats_database_path`   | Path to the Statistics database.                      | `./data/sarracenia_stats.db?_journal_mode=WAL&_busy_timeout=5000`  |
-| `dashboard_tmpl_path`   | Path to dashboard templates.                          | `./data/dashboard/templates/`                                      |
-| `dashboard_static_path` | Path to dashboard static assets.                      | `./data/dashboard/static/`                                         |
-| `enabled_templates`     | List of templates enabled for random selection.       | `["page.tmpl.html"]`                                               |
+| `data_dir`              | Base directory for data files.                                                                    | `./data`                                                           |
+| `markov_database_path`  | Path to the Markov chain database.                                                                | `./data/sarracenia_markov.db?_journal_mode=WAL&_busy_timeout=5000` |
+| `auth_database_path`    | Path to the Auth/Whitelist database.                                                              | `./data/sarracenia_auth.db?_journal_mode=WAL&_busy_timeout=5000`   |
+| `stats_database_path`   | Path to the Statistics database.                                                                  | `./data/sarracenia_stats.db?_journal_mode=WAL&_busy_timeout=5000`  |
+| `dashboard_tmpl_path`   | Path to dashboard templates.                                                                      | `./data/dashboard/templates/`                                      |
+| `dashboard_static_path` | Path to dashboard static assets.                                                                  | `./data/dashboard/static/`                                         |
+| `enabled_templates`     | List of templates enabled for random selection.                                                   | `["page.tmpl.html"]`                                               |
 
 ### Tarpit Configuration (`tarpit_config`)
 
 Controls the behavior of the tarpit response mechanism.
 
-| Key                         | Description                                                          | Default                                                                                                                                                                                                                                     |
-|:----------------------------|:---------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `enable_drip_feed`          | If true, responses are sent in slow chunks to hold connections open. | `false`                                                                                                                                                                                                                                     |
-| `min_initial_delay_ms`      | Minimum delay before sending the first byte.                         | `0`                                                                                                                                                                                                                                         |
-| `max_initial_delay_ms`      | Maximum delay before sending the first byte.                         | `15000`                                                                                                                                                                                                                                     |
-| `min_drip_feed_delay_ms`    | Minimum delay between subsequent chunks.                             | `500`                                                                                                                                                                                                                                       |
-| `max_drip_feed_delay_ms`    | Maximum delay between subsequent chunks.                             | `1000`                                                                                                                                                                                                                                      |
-| `min_drip_feed_chunks`      | Minimum total chunks to split the response into.                     | `1`                                                                                                                                                                                                                                         |
-| `max_drip_feed_chunks`      | Maximum total chunks to split the response into.                     | `20`                                                                                                                                                                                                                                        |
-| `headers`                   | HTTP headers that the tarpit replies to each request with.           | `{"Cache-Control":"no-store, no-cache","Pragma":"no-cache","Expires":"0","Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';","Content-Type":"text/html; charset=utf-8",}` |
+| Key                      | Description                                                          | Default                                                                                                                                                                                                                                     |
+|:-------------------------|:---------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `enable_drip_feed`       | If true, responses are sent in slow chunks to hold connections open. | `false`                                                                                                                                                                                                                                     |
+| `min_initial_delay_ms`   | Minimum delay before sending the first byte.                         | `0`                                                                                                                                                                                                                                         |
+| `max_initial_delay_ms`   | Maximum delay before sending the first byte.                         | `15000`                                                                                                                                                                                                                                     |
+| `min_drip_feed_delay_ms` | Minimum delay between subsequent chunks.                             | `500`                                                                                                                                                                                                                                       |
+| `max_drip_feed_delay_ms` | Maximum delay between subsequent chunks.                             | `1000`                                                                                                                                                                                                                                      |
+| `min_drip_feed_chunks`   | Minimum total chunks to split the response into.                     | `1`                                                                                                                                                                                                                                         |
+| `max_drip_feed_chunks`   | Maximum total chunks to split the response into.                     | `20`                                                                                                                                                                                                                                        |
+| `headers`                | HTTP headers that the tarpit replies to each request with.           | `{"Cache-Control":"no-store, no-cache","Pragma":"no-cache","Expires":"0","Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';","Content-Type":"text/html; charset=utf-8",}` |
 
 ### Statistics Configuration (`stats_config`)
 
@@ -315,10 +318,10 @@ lock errors.
 
 A special thank you to [Nepenthes](https://zadzmo.org/code/nepenthes/) for the inspiration.
 
-This project is *technically* a fork from the initial version of 
-[Chunchunmaru](https://github.com/BrandenStoberReal/Chunchunmaru), which I majorly contributed to before the fork there 
-was made. This is the reason for the similarities in functions for template generation and other project structure. 
+This project is *technically* a fork from the initial version of
+[Chunchunmaru](https://github.com/BrandenStoberReal/Chunchunmaru), which I majorly contributed to before the fork there
+was made. This is the reason for the similarities in functions for template generation and other project structure.
 However, I started from scratch and wrote Sarracenia from the ground up to fit my original vision for the project.
 
-Gemini CLI was used to make the dashboard, as I am not an experienced frontend/html programmer, nor do I plan on being 
+Gemini CLI was used to make the dashboard, as I am not an experienced frontend/html programmer, nor do I plan on being
 one. If anyone would like to make their own, improved version, I would be glad to accept it as a replacement.

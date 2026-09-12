@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -23,6 +24,8 @@ CREATE TABLE IF NOT EXISTS api_keys (
     description   TEXT      NOT NULL
 );
 `
+
+const masterKeyEnvVar = "sarr-master-key"
 
 type contextKey string
 
@@ -47,6 +50,29 @@ func setupAuthSchema(db *sql.DB) error {
 }
 
 func NewAuthAPI(db *sql.DB, logger *slog.Logger) *AuthAPI {
+	// Count keys in db. If 0, first-run key creation has to be done.
+	var keyCount int
+	_ = db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM api_keys").Scan(&keyCount)
+	if keyCount == 0 {
+		// First-run key creation. Check env var first, if not, random.
+		masterKey := os.Getenv(masterKeyEnvVar)
+		if masterKey == "" {
+			masterKey, _ = generateAPIKey()
+			logger.Warn("No API keys existed, generated master API key:", "key", masterKey)
+		} else {
+			logger.Warn("No API keys existed, using sarr-master-key API key:", "key", masterKey)
+		}
+		// Insert new master key into db.
+		masterKeyHash := hashAPIKey(masterKey)
+		_, err := db.ExecContext(context.Background(),
+			`INSERT INTO api_keys (key_hash, description, scopes) VALUES (?, ?, ?)`,
+			masterKeyHash, "Auto-Generated Master Key", "*")
+		if err != nil {
+			// This reasonably should never happen, but if it does, restart sarr?
+			logger.Error("Failed to insert master API key", "error", err)
+		}
+	}
+
 	return &AuthAPI{
 		db:     db,
 		logger: logger,
@@ -85,21 +111,6 @@ type CreateKeyResponse struct {
 func (a *AuthAPI) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		var keyCount int
-		err := a.db.QueryRowContext(r.Context(), "SELECT COUNT(*) FROM api_keys").Scan(&keyCount)
-		if err != nil {
-			a.logger.Error("Authenticate failed to count keys", "error", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		if keyCount == 0 {
-			// No keys exist, API is open. Create a dummy master permission.
-			ctx := context.WithValue(r.Context(), contextKeyPermissions, &Permissions{ScopeSet: map[string]struct{}{"*": {}}})
-			next.ServeHTTP(w, r.WithContext(ctx))
-			return
-		}
-
 		apiKey := r.Header.Get("sarr-auth")
 		if apiKey == "" {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -108,7 +119,7 @@ func (a *AuthAPI) Authenticate(next http.Handler) http.Handler {
 
 		keyHash := hashAPIKey(apiKey)
 		var scopesStr string
-		err = a.db.QueryRowContext(r.Context(), "SELECT scopes FROM api_keys WHERE key_hash = ?", keyHash).Scan(&scopesStr)
+		err := a.db.QueryRowContext(r.Context(), "SELECT scopes FROM api_keys WHERE key_hash = ?", keyHash).Scan(&scopesStr)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -236,14 +247,7 @@ func (a *AuthAPI) createKey(w http.ResponseWriter, r *http.Request) {
 	}
 	keyHash := hashAPIKey(rawKey)
 
-	var keyCount int
-	_ = a.db.QueryRowContext(r.Context(), "SELECT COUNT(*) FROM api_keys").Scan(&keyCount)
 	scopesStr := strings.Join(req.Scopes, " ")
-	// The first key created is always given a master scope, no matter what.
-	// This ensures that the user cannot softlock themselves out of permissions.
-	if keyCount == 0 {
-		scopesStr = "*"
-	}
 
 	var newID int
 	err = a.db.QueryRowContext(r.Context(),
