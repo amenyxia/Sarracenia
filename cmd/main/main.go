@@ -23,6 +23,8 @@ var (
 )
 
 func main() {
+	// The base logger is purely to log startup and startup errors,
+	// as the logger rotation config cannot be loaded at this point.
 	baseLogger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	actionChan := make(chan string, 1)
@@ -76,9 +78,9 @@ func run(actionChan chan string) (string, error) {
 	default:
 		logLevel = slog.LevelInfo
 	}
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
+	logWriter := activeConfig.Server.LogsConfig.getLogger()
+	logger := slog.New(slog.NewTextHandler(logWriter, &slog.HandlerOptions{Level: logLevel}))
 	logger.Info("Starting server cycle...")
-
 	cm.SetLogger(logger)
 
 	markovDB, err := initDB(activeConfig.Server.MarkovDatabasePath)
@@ -172,7 +174,13 @@ func run(actionChan chan string) (string, error) {
 	if err = statsDB.Close(); err != nil {
 		logger.Error("Failed to close stats database", "error", err)
 	}
+	logger.Info("Database connections closed.")
 
+	logger.Info("Closing logger.")
+	err = logWriter.Close()
+	if err != nil {
+		logger.Error("Failed to close log file", "error", err)
+	}
 	return action, nil
 }
 

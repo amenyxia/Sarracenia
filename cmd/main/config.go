@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"os"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/DeRuina/timberjack"
 	"github.com/amenyxia/Sarracenia/pkg/templating"
 	"github.com/natefinch/atomic"
 )
@@ -29,6 +32,7 @@ type ServerConfig struct {
 	EnabledTemplates    []string      `json:"enabled_templates"`
 	TarpitConfig        *TarpitConfig `json:"tarpit_config"`
 	StatsConfig         *StatsConfig  `json:"stats_config"`
+	LogsConfig          *LogsConfig   `json:"logs_config"`
 }
 
 // TarpitConfig holds settings for response delaying and drip-feeding.
@@ -48,6 +52,22 @@ type StatsConfig struct {
 	SyncIntervalSec  int `json:"sync_interval_sec"`
 	ForgetThreshold  int `json:"forget_threshold"`
 	ForgetDelayHours int `json:"forget_delay_hours"`
+}
+
+// LogsConfig holds settings for log rotation.
+type LogsConfig struct {
+	Filename           string        `json:"filename"`
+	MaxSize            int           `json:"max_size"`
+	MaxAge             int           `json:"max_age"`
+	MaxBackups         int           `json:"max_backups"`
+	LocalTime          bool          `json:"local_time"`
+	Compression        string        `json:"compression"`
+	RotationInterval   time.Duration `json:"rotation_interval"`
+	RotateAtMinutes    []int         `json:"rotate_at_minutes"`
+	RotateAt           []string      `json:"rotate_at"`
+	BackupTimeFormat   string        `json:"backup_time_format"`
+	AppendTimeAfterExt bool          `json:"append_time_after_ext"`
+	FileMode           os.FileMode   `json:"file_mode"`
 }
 
 // Config is the top-level configuration struct that aggregates all other configs.
@@ -91,6 +111,20 @@ func DefaultServerConfig() *ServerConfig {
 			SyncIntervalSec:  30,
 			ForgetThreshold:  10,
 			ForgetDelayHours: 24,
+		},
+		LogsConfig: &LogsConfig{
+			Filename:           "./logs",
+			MaxSize:            500,
+			MaxBackups:         3,
+			MaxAge:             28,
+			Compression:        "gzip",
+			LocalTime:          true,
+			RotationInterval:   24,
+			RotateAtMinutes:    []int{},
+			RotateAt:           []string{},
+			BackupTimeFormat:   "2006-01-02-15-04-05",
+			AppendTimeAfterExt: true,
+			FileMode:           os.FileMode(0644),
 		},
 	}
 }
@@ -268,4 +302,22 @@ func (cm *ConfigManager) refreshCache() {
 	}
 	cm.trustedCIDRs = cidrs
 	cm.trustedIPs = ips
+}
+
+// getLogger returns a configured timberjack.Logger
+func (lc *LogsConfig) getLogger() io.WriteCloser {
+	return &timberjack.Logger{
+		Filename:           lc.Filename,
+		MaxSize:            lc.MaxSize,
+		MaxAge:             lc.MaxAge,
+		MaxBackups:         lc.MaxBackups,
+		LocalTime:          lc.LocalTime,
+		Compression:        lc.Compression,
+		RotationInterval:   lc.RotationInterval * time.Hour,
+		RotateAtMinutes:    lc.RotateAtMinutes,
+		RotateAt:           lc.RotateAt,
+		BackupTimeFormat:   lc.BackupTimeFormat,
+		AppendTimeAfterExt: lc.AppendTimeAfterExt,
+		FileMode:           lc.FileMode,
+	}
 }

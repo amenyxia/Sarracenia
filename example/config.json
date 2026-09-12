@@ -33,6 +33,20 @@
       "sync_interval_sec": 30,
       "forget_threshold": 10,
       "forget_delay_hours": 24
+    },
+    "logs_config": {
+      "filename": "./logs",
+      "max_size": 500,
+      "max_age": 28,
+      "max_backups": 3,
+      "local_time": true,
+      "compression": "gzip",
+      "rotation_interval": 24,
+      "rotate_at_minutes": [],
+      "rotate_at": [],
+      "backup_time_format": "2006-01-02-15-04-05",
+      "append_time_after_ext": true,
+      "file_mode": 420
     }
   },
   "template_config": {

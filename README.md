@@ -163,6 +163,23 @@ Controls the behavior of the tarpit response mechanism.
 | `forget_threshold`   | Minimum hits required to retain an IP record.    | `10`    |
 | `forget_delay_hours` | Time without activity before a record is pruned. | `24`    |
 
+### Log Configuration (`logs_config`)
+
+| Key                     | Description                                                               | Default               |
+|:------------------------|:--------------------------------------------------------------------------|:----------------------|
+| `filename`              | File to write the log to; rotated backups are kept in the same directory. | `./logs`              |
+| `max_size`              | Maximum log file size in megabytes before rotation. `0` means 100.        | `500`                 |
+| `max_age`               | Days to retain rotated log files. `0` retains them all.                   | `28`                  |
+| `max_backups`           | Number of rotated log files to retain. `0` retains them all.              | `3`                   |
+| `local_time`            | Use local time in backup timestamps.                                      | `true`                |
+| `compression`           | Backup compression: `none`, `gzip`, or `zstd`.                            | `gzip`                |
+| `rotation_interval`     | Maximum duration between rotations, in hours. `0` disables time rotation. | `24`                  |
+| `rotate_at_minutes`     | Minutes within the hour (e.g. `[0, 30]`) at which to rotate.              | `[]`                  |
+| `rotate_at`             | Clock times (e.g. `["00:00", "12:00"]`) at which to rotate.               | `[]`                  |
+| `backup_time_format`    | Time layout used in backup file names.                                    | `2006-01-02-15-04-05` |
+| `append_time_after_ext` | Place the timestamp after the file extension.                             | `true`                |
+| `file_mode`             | File mode for new log files (decimal; `420` = `0644`). `0` means `0640`.  | `420` (0644)          |
+
 ### Template Configuration (`template_config`)
 
 | Key                          | Description                                                                             | Default         |
