@@ -32,7 +32,9 @@
     "stats_config": {
       "sync_interval_sec": 30,
       "forget_threshold": 10,
-      "forget_delay_hours": 24
+      "forget_delay_hours": 24,
+      "max_user_agent_bytes": 512,
+      "max_unique_user_agents": 1000
     },
     "logs_config": {
       "filename": "./logs",

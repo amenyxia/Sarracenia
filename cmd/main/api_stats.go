@@ -153,8 +153,25 @@ func (c *MetricsCache) GetOrIncrementMetrics(ip, ua string, accessTime time.Time
 	}
 
 	// Get or create UA stats
+	ua = c.normalizeUA(ua)
 	uaStats, exists := c.uaStats[ua]
 	if !exists {
+		// UA cap reached, so evict the least recently seen UA to make room.
+		if c.config.MaxUniqueUserAgents > 0 && len(c.uaStats) >= c.config.MaxUniqueUserAgents {
+			var oldest string
+			var oldestSeen time.Time
+			first := true
+			for k, v := range c.uaStats {
+				if first || v.LastSeen.Before(oldestSeen) {
+					oldest = k
+					oldestSeen = v.LastSeen
+					first = false
+				}
+			}
+			if oldest != "" {
+				delete(c.uaStats, oldest)
+			}
+		}
 		uaStats = &UAStats{
 			TotalHits: 1,
 			FirstSeen: accessTime,
@@ -306,6 +323,17 @@ func (c *MetricsCache) syncDB() {
 		`, ua, stats.TotalHits, stats.FirstSeen, stats.LastSeen, stats.TotalHits, stats.LastSeen)
 		if err != nil {
 			c.logger.Error("Failed to sync User Agent stats to DB", "user_agent", ua, "error", err)
+		}
+	}
+
+	// Keep the user agent table at the configured cardinality cap (LRU by last_seen).
+	if c.config.MaxUniqueUserAgents > 0 {
+		_, err = tx.Exec(`
+			DELETE FROM stats_user_agent
+			WHERE rowid NOT IN (SELECT rowid FROM stats_user_agent ORDER BY last_seen DESC LIMIT ?)
+		`, c.config.MaxUniqueUserAgents)
+		if err != nil {
+			c.logger.Error("Failed to prune user agent stats", "error", err)
 		}
 	}
 
@@ -573,4 +601,12 @@ func (s *StatsAPI) handleResetAll(w http.ResponseWriter, r *http.Request) {
 
 	s.logger.Warn("All statistics have been reset via API.")
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// normalizeUA truncates a user agent string to the configured max length in bytes.
+func (c *MetricsCache) normalizeUA(ua string) string {
+	if c.config.MaxUserAgentBytes > 0 && len(ua) > c.config.MaxUserAgentBytes {
+		return ua[:c.config.MaxUserAgentBytes]
+	}
+	return ua
 }

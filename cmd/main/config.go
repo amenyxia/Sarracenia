@@ -49,9 +49,11 @@ type TarpitConfig struct {
 
 // StatsConfig holds settings for statistics caching and cleanup.
 type StatsConfig struct {
-	SyncIntervalSec  int `json:"sync_interval_sec"`
-	ForgetThreshold  int `json:"forget_threshold"`
-	ForgetDelayHours int `json:"forget_delay_hours"`
+	SyncIntervalSec     int `json:"sync_interval_sec"`
+	ForgetThreshold     int `json:"forget_threshold"`
+	ForgetDelayHours    int `json:"forget_delay_hours"`
+	MaxUserAgentBytes   int `json:"max_user_agent_bytes"`
+	MaxUniqueUserAgents int `json:"max_unique_user_agents"`
 }
 
 // LogsConfig holds settings for log rotation.
@@ -108,9 +110,11 @@ func DefaultServerConfig() *ServerConfig {
 			},
 		},
 		StatsConfig: &StatsConfig{
-			SyncIntervalSec:  30,
-			ForgetThreshold:  10,
-			ForgetDelayHours: 24,
+			SyncIntervalSec:     30,
+			ForgetThreshold:     10,
+			ForgetDelayHours:    24,
+			MaxUserAgentBytes:   512,
+			MaxUniqueUserAgents: 1000,
 		},
 		LogsConfig: &LogsConfig{
 			Filename:           "./logs",

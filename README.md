@@ -160,11 +160,13 @@ Controls the behavior of the tarpit response mechanism.
 
 ### Statistics Configuration (`stats_config`)
 
-| Key                  | Description                                      | Default |
-|:---------------------|:-------------------------------------------------|:--------|
-| `sync_interval_sec`  | Frequency of flushing stats from memory to disk. | `30`    |
-| `forget_threshold`   | Minimum hits required to retain an IP record.    | `10`    |
-| `forget_delay_hours` | Time without activity before a record is pruned. | `24`    |
+| Key                      | Description                                                                                                 | Default |
+|:-------------------------|:------------------------------------------------------------------------------------------------------------|:--------|
+| `sync_interval_sec`      | Frequency of flushing stats from memory to disk.                                                            | `30`    |
+| `forget_threshold`       | Minimum hits required to retain an IP record.                                                               | `10`    |
+| `forget_delay_hours`     | Time without activity before a record is pruned.                                                            | `24`    |
+| `max_user_agent_bytes`   | Truncates user-agent strings to this many bytes. `0` disables.                                              | `512`   |
+| `max_unique_user_agents` | Keeps at most this many distinct user agents; oldest by `last_seen` are dropped on each sync. `0` disables. | `1000`  |
 
 ### Log Configuration (`logs_config`)
 
